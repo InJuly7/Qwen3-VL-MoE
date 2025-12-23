@@ -1,0 +1,131 @@
+Analyzing: /root/autodl-tmp/model/qwen3-vl-moe/model.safetensors
+
+Layer Name                                         Shape                     Dtype      Size (MB)   
+====================================================================================================
+lm_head.weight                                     (151936, 2048)            torch.bfloat16     593.50
+model.language_model.embed_tokens.weight           (151936, 2048)            torch.bfloat16     593.50
+model.language_model.layers.0.input_layernorm.weight (2048,)                   torch.bfloat16       0.00
+model.language_model.layers.0.mlp.experts.down_proj (128, 768, 2048)          torch.bfloat16     384.00
+model.language_model.layers.0.mlp.experts.gate_up_proj (128, 2048, 1536)         torch.bfloat16     768.00
+model.language_model.layers.0.mlp.gate.weight      (128, 2048)               torch.bfloat16       0.50
+model.language_model.layers.0.post_attention_layernorm.weight (2048,)                   torch.bfloat16       0.00
+model.language_model.layers.0.self_attn.k_norm.weight (128,)                    torch.bfloat16       0.00
+model.language_model.layers.0.self_attn.k_proj.weight (512, 2048)               torch.bfloat16       2.00
+model.language_model.layers.0.self_attn.o_proj.weight (2048, 4096)              torch.bfloat16      16.00
+model.language_model.layers.0.self_attn.q_norm.weight (128,)                    torch.bfloat16       0.00
+model.language_model.layers.0.self_attn.q_proj.weight (4096, 2048)              torch.bfloat16      16.00
+model.language_model.layers.0.self_attn.v_proj.weight (512, 2048)               torch.bfloat16       2.00
+model.language_model.layers.1.input_layernorm.weight (2048,)                   torch.bfloat16       0.00
+model.language_model.layers.1.mlp.experts.down_proj (128, 768, 2048)          torch.bfloat16     384.00
+model.language_model.layers.1.mlp.experts.gate_up_proj (128, 2048, 1536)         torch.bfloat16     768.00
+model.language_model.layers.1.mlp.gate.weight      (128, 2048)               torch.bfloat16       0.50
+model.language_model.layers.1.post_attention_layernorm.weight (2048,)                   torch.bfloat16       0.00
+model.language_model.layers.1.self_attn.k_norm.weight (128,)                    torch.bfloat16       0.00
+model.language_model.layers.1.self_attn.k_proj.weight (512, 2048)               torch.bfloat16       2.00
+model.language_model.layers.1.self_attn.o_proj.weight (2048, 4096)              torch.bfloat16      16.00
+model.language_model.layers.1.self_attn.q_norm.weight (128,)                    torch.bfloat16       0.00
+model.language_model.layers.1.self_attn.q_proj.weight (4096, 2048)              torch.bfloat16      16.00
+model.language_model.layers.1.self_attn.v_proj.weight (512, 2048)               torch.bfloat16       2.00
+model.language_model.norm.weight                   (2048,)                   torch.bfloat16       0.00
+model.visual.blocks.0.attn.proj.bias               (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.0.attn.proj.weight             (1152, 1152)              torch.bfloat16       2.53
+model.visual.blocks.0.attn.qkv.bias                (3456,)                   torch.bfloat16       0.01
+model.visual.blocks.0.attn.qkv.weight              (3456, 1152)              torch.bfloat16       7.59
+model.visual.blocks.0.mlp.linear_fc1.bias          (4304,)                   torch.bfloat16       0.01
+model.visual.blocks.0.mlp.linear_fc1.weight        (4304, 1152)              torch.bfloat16       9.46
+model.visual.blocks.0.mlp.linear_fc2.bias          (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.0.mlp.linear_fc2.weight        (1152, 4304)              torch.bfloat16       9.46
+model.visual.blocks.0.norm1.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.0.norm1.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.0.norm2.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.0.norm2.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.1.attn.proj.bias               (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.1.attn.proj.weight             (1152, 1152)              torch.bfloat16       2.53
+model.visual.blocks.1.attn.qkv.bias                (3456,)                   torch.bfloat16       0.01
+model.visual.blocks.1.attn.qkv.weight              (3456, 1152)              torch.bfloat16       7.59
+model.visual.blocks.1.mlp.linear_fc1.bias          (4304,)                   torch.bfloat16       0.01
+model.visual.blocks.1.mlp.linear_fc1.weight        (4304, 1152)              torch.bfloat16       9.46
+model.visual.blocks.1.mlp.linear_fc2.bias          (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.1.mlp.linear_fc2.weight        (1152, 4304)              torch.bfloat16       9.46
+model.visual.blocks.1.norm1.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.1.norm1.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.1.norm2.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.1.norm2.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.2.attn.proj.bias               (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.2.attn.proj.weight             (1152, 1152)              torch.bfloat16       2.53
+model.visual.blocks.2.attn.qkv.bias                (3456,)                   torch.bfloat16       0.01
+model.visual.blocks.2.attn.qkv.weight              (3456, 1152)              torch.bfloat16       7.59
+model.visual.blocks.2.mlp.linear_fc1.bias          (4304,)                   torch.bfloat16       0.01
+model.visual.blocks.2.mlp.linear_fc1.weight        (4304, 1152)              torch.bfloat16       9.46
+model.visual.blocks.2.mlp.linear_fc2.bias          (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.2.mlp.linear_fc2.weight        (1152, 4304)              torch.bfloat16       9.46
+model.visual.blocks.2.norm1.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.2.norm1.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.2.norm2.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.2.norm2.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.3.attn.proj.bias               (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.3.attn.proj.weight             (1152, 1152)              torch.bfloat16       2.53
+model.visual.blocks.3.attn.qkv.bias                (3456,)                   torch.bfloat16       0.01
+model.visual.blocks.3.attn.qkv.weight              (3456, 1152)              torch.bfloat16       7.59
+model.visual.blocks.3.mlp.linear_fc1.bias          (4304,)                   torch.bfloat16       0.01
+model.visual.blocks.3.mlp.linear_fc1.weight        (4304, 1152)              torch.bfloat16       9.46
+model.visual.blocks.3.mlp.linear_fc2.bias          (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.3.mlp.linear_fc2.weight        (1152, 4304)              torch.bfloat16       9.46
+model.visual.blocks.3.norm1.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.3.norm1.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.3.norm2.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.3.norm2.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.4.attn.proj.bias               (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.4.attn.proj.weight             (1152, 1152)              torch.bfloat16       2.53
+model.visual.blocks.4.attn.qkv.bias                (3456,)                   torch.bfloat16       0.01
+model.visual.blocks.4.attn.qkv.weight              (3456, 1152)              torch.bfloat16       7.59
+model.visual.blocks.4.mlp.linear_fc1.bias          (4304,)                   torch.bfloat16       0.01
+model.visual.blocks.4.mlp.linear_fc1.weight        (4304, 1152)              torch.bfloat16       9.46
+model.visual.blocks.4.mlp.linear_fc2.bias          (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.4.mlp.linear_fc2.weight        (1152, 4304)              torch.bfloat16       9.46
+model.visual.blocks.4.norm1.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.4.norm1.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.4.norm2.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.4.norm2.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.5.attn.proj.bias               (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.5.attn.proj.weight             (1152, 1152)              torch.bfloat16       2.53
+model.visual.blocks.5.attn.qkv.bias                (3456,)                   torch.bfloat16       0.01
+model.visual.blocks.5.attn.qkv.weight              (3456, 1152)              torch.bfloat16       7.59
+model.visual.blocks.5.mlp.linear_fc1.bias          (4304,)                   torch.bfloat16       0.01
+model.visual.blocks.5.mlp.linear_fc1.weight        (4304, 1152)              torch.bfloat16       9.46
+model.visual.blocks.5.mlp.linear_fc2.bias          (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.5.mlp.linear_fc2.weight        (1152, 4304)              torch.bfloat16       9.46
+model.visual.blocks.5.norm1.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.5.norm1.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.5.norm2.bias                   (1152,)                   torch.bfloat16       0.00
+model.visual.blocks.5.norm2.weight                 (1152,)                   torch.bfloat16       0.00
+model.visual.deepstack_merger_list.0.linear_fc1.bias (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.0.linear_fc1.weight (4608, 4608)              torch.bfloat16      40.50
+model.visual.deepstack_merger_list.0.linear_fc2.bias (2048,)                   torch.bfloat16       0.00
+model.visual.deepstack_merger_list.0.linear_fc2.weight (2048, 4608)              torch.bfloat16      18.00
+model.visual.deepstack_merger_list.0.norm.bias     (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.0.norm.weight   (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.1.linear_fc1.bias (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.1.linear_fc1.weight (4608, 4608)              torch.bfloat16      40.50
+model.visual.deepstack_merger_list.1.linear_fc2.bias (2048,)                   torch.bfloat16       0.00
+model.visual.deepstack_merger_list.1.linear_fc2.weight (2048, 4608)              torch.bfloat16      18.00
+model.visual.deepstack_merger_list.1.norm.bias     (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.1.norm.weight   (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.2.linear_fc1.bias (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.2.linear_fc1.weight (4608, 4608)              torch.bfloat16      40.50
+model.visual.deepstack_merger_list.2.linear_fc2.bias (2048,)                   torch.bfloat16       0.00
+model.visual.deepstack_merger_list.2.linear_fc2.weight (2048, 4608)              torch.bfloat16      18.00
+model.visual.deepstack_merger_list.2.norm.bias     (4608,)                   torch.bfloat16       0.01
+model.visual.deepstack_merger_list.2.norm.weight   (4608,)                   torch.bfloat16       0.01
+model.visual.merger.linear_fc1.bias                (4608,)                   torch.bfloat16       0.01
+model.visual.merger.linear_fc1.weight              (4608, 4608)              torch.bfloat16      40.50
+model.visual.merger.linear_fc2.bias                (2048,)                   torch.bfloat16       0.00
+model.visual.merger.linear_fc2.weight              (2048, 4608)              torch.bfloat16      18.00
+model.visual.merger.norm.bias                      (1152,)                   torch.bfloat16       0.00
+model.visual.merger.norm.weight                    (1152,)                   torch.bfloat16       0.00
+model.visual.patch_embed.proj.bias                 (1152,)                   torch.bfloat16       0.00
+model.visual.patch_embed.proj.weight               (1152, 3, 2, 16, 16)      torch.bfloat16       3.38
+model.visual.pos_embed.weight                      (2304, 1152)              torch.bfloat16       5.06
+====================================================================================================
+Total Parameters: 2,087,175,008
+Total Size: 3980.97 MB (3.89 GB)
