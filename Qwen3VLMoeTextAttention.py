@@ -1,15 +1,20 @@
+import torch
+import torch.nn as nn
+from typing import Optional, Callable
+from config import Qwen3VLMoeTextConfig
+from Qwen3VLMoeTextRMSNorm import Qwen3VLMoeTextRMSNorm
+from Qwen3VLMoeTextRotaryEmbedding import Qwen3VLMoeTextRotaryEmbedding
+from utils import DynamicCache
+from utils import _prepare_decoder_attention_mask, create_tensor, build_position_ids
+
+
 def rotate_half(x):
-    """Rotates half the hidden dims of the input."""
     x1 = x[..., : x.shape[-1] // 2]
     x2 = x[..., x.shape[-1] // 2 :]
     return torch.cat((-x2, x1), dim=-1)
 
 
 def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
-    """
-    This is the equivalent of torch.repeat_interleave(x, dim=1, repeats=n_rep). The hidden states go from (batch,
-    num_key_value_heads, seqlen, head_dim) to (batch, num_attention_heads, seqlen, head_dim)
-    """
     batch, num_key_value_heads, slen, head_dim = hidden_states.shape
     if n_rep == 1:
         return hidden_states
@@ -25,7 +30,8 @@ def eager_attention_forward(
     attention_mask: Optional[torch.Tensor],
     scaling: float,
     dropout: float = 0.0,
-    **kwargs: Unpack[TransformersKwargs],
+    # **kwargs: Unpack[TransformersKwargs],
+    **kwargs,
 ):
     key_states = repeat_kv(key, module.num_key_value_groups)
     value_states = repeat_kv(value, module.num_key_value_groups)
@@ -44,25 +50,6 @@ def eager_attention_forward(
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
-    """Applies Rotary Position Embedding to the query and key tensors.
-
-    Args:
-        q (`torch.Tensor`): The query tensor.
-        k (`torch.Tensor`): The key tensor.
-        cos (`torch.Tensor`): The cosine part of the rotary embedding.
-        sin (`torch.Tensor`): The sine part of the rotary embedding.
-        position_ids (`torch.Tensor`, *optional*):
-            Deprecated and unused.
-        unsqueeze_dim (`int`, *optional*, defaults to 1):
-            The 'unsqueeze_dim' argument specifies the dimension along which to unsqueeze cos[position_ids] and
-            sin[position_ids] so that they can be properly broadcasted to the dimensions of q and k. For example, note
-            that cos[position_ids] and sin[position_ids] have the shape [batch_size, seq_len, head_dim]. Then, if q and
-            k have the shape [batch_size, heads, seq_len, head_dim], then setting unsqueeze_dim=1 makes
-            cos[position_ids] and sin[position_ids] broadcastable to the shapes of q and k. Similarly, if q and k have
-            the shape [batch_size, seq_len, heads, head_dim], then set unsqueeze_dim=2.
-    Returns:
-        `tuple(torch.Tensor)` comprising of the query and key tensors rotated using the Rotary Position Embedding.
-    """
     cos = cos.unsqueeze(unsqueeze_dim)
     sin = sin.unsqueeze(unsqueeze_dim)
     q_embed = (q * cos) + (rotate_half(q) * sin)
@@ -71,8 +58,6 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
 
 
 class Qwen3VLMoeTextAttention(nn.Module):
-    """Multi-headed attention from 'Attention Is All You Need' paper"""
-
     def __init__(self, config: Qwen3VLMoeTextConfig, layer_idx: int):
         super().__init__()
         self.config = config
@@ -90,15 +75,17 @@ class Qwen3VLMoeTextAttention(nn.Module):
         self.q_norm = Qwen3VLMoeTextRMSNorm(self.head_dim, eps=config.rms_norm_eps)  # unlike olmo, only on the head dim!
         self.k_norm = Qwen3VLMoeTextRMSNorm(self.head_dim, eps=config.rms_norm_eps)  # thus post q_norm does not need reshape
 
-    @deprecate_kwarg("past_key_value", new_name="past_key_values", version="4.58")
+    # @deprecate_kwarg("past_key_value", new_name="past_key_values", version="4.58")
     def forward(
         self,
         hidden_states: torch.Tensor,
         position_embeddings: tuple[torch.Tensor, torch.Tensor],
         attention_mask: Optional[torch.Tensor],
-        past_key_values: Optional[Cache] = None,
+        # past_key_values: Optional[Cache] = None,
+        past_key_values: Optional[DynamicCache] = None,
         cache_position: Optional[torch.LongTensor] = None,
-        **kwargs: Unpack[FlashAttentionKwargs],
+        # **kwargs: Unpack[FlashAttentionKwargs],
+        **kwargs,
     ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
@@ -116,8 +103,8 @@ class Qwen3VLMoeTextAttention(nn.Module):
             key_states, value_states = past_key_values.update(key_states, value_states, self.layer_idx, cache_kwargs)
 
         attention_interface: Callable = eager_attention_forward
-        if self.config._attn_implementation != "eager":
-            attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
+        # if self.config._attn_implementation != "eager":
+        #     attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
 
         attn_output, attn_weights = attention_interface(
             self,
@@ -133,3 +120,68 @@ class Qwen3VLMoeTextAttention(nn.Module):
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         attn_output = self.o_proj(attn_output)
         return attn_output, attn_weights
+
+
+def test_qwen3_vl_moe_text_attention():
+    config = Qwen3VLMoeTextConfig()
+    model = Qwen3VLMoeTextAttention(config, layer_idx=0).to(device="cuda", dtype=torch.bfloat16)
+    model.eval()
+    B = 1
+    S = 2768
+    N1 = config.num_attention_heads
+    N2 = config.num_key_value_heads
+    G = N1 // N2
+    H = config.hidden_size
+    D = H // N1
+    past_key_values_length = 0
+    past_key_values = DynamicCache()
+
+    hidden_states = create_tensor((B, S, H), dtype=torch.bfloat16, ndim=3, device="cuda")
+    position_ids = build_position_ids(seq_len=S, text_len=128, grid_h=55, grid_w=48, device="cuda")  # [3, B, S]
+    rope = Qwen3VLMoeTextRotaryEmbedding(config=config).to(device="cuda", dtype=torch.bfloat16)
+    with torch.no_grad():
+        sin_cache, cos_cache = rope(hidden_states, position_ids)  # [B, S, D]
+    position_embeddings = (cos_cache, sin_cache)
+    attention_mask = torch.ones(B, S).to(dtype=torch.bfloat16, device="cuda")
+    # prefill 阶段
+    attention_mask = _prepare_decoder_attention_mask(
+        attention_mask=attention_mask,
+        input_shape=hidden_states.shape[:2],
+        past_key_values_length=past_key_values_length,
+        dtype=torch.bfloat16,
+        device="cuda",
+    )
+    print(f"attention_mask: {attention_mask}")
+    print(f"attention shape: {attention_mask.shape}")
+    with torch.no_grad():
+        attn_output, attn_weights = model(
+            hidden_states,
+            position_embeddings=position_embeddings,
+            attention_mask=attention_mask,
+            past_key_values=past_key_values,
+        )
+    print(f"Layer 0 output shape: {attn_output.shape}, attn_weights shape: {attn_weights.shape}")
+    print(f"kv cache length {past_key_values.get_seq_length()}")
+
+
+if __name__ == "__main__":
+    test_qwen3_vl_moe_text_attention()
+
+"""
+attention_mask: tensor([[[[ 0.0000e+00, -3.3895e+38, -3.3895e+38,  ..., -3.3895e+38,
+           -3.3895e+38, -3.3895e+38],
+          [ 0.0000e+00,  0.0000e+00, -3.3895e+38,  ..., -3.3895e+38,
+           -3.3895e+38, -3.3895e+38],
+          [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  ..., -3.3895e+38,
+           -3.3895e+38, -3.3895e+38],
+          ...,
+          [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  ...,  0.0000e+00,
+           -3.3895e+38, -3.3895e+38],
+          [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  ...,  0.0000e+00,
+            0.0000e+00, -3.3895e+38],
+          [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  ...,  0.0000e+00,
+            0.0000e+00,  0.0000e+00]]]], device='cuda:0', dtype=torch.bfloat16)
+attention shape: torch.Size([1, 1, 2768, 2768])
+Layer 0 output shape: torch.Size([1, 2768, 2048]), attn_weights shape: torch.Size([1, 32, 2768, 2768])
+kv cache length 2768
+"""

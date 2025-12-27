@@ -1,9 +1,23 @@
-class Qwen3VLMoeVisionModel(Qwen3VLMoePreTrainedModel):
+import torch
+from torch import nn
+from torch.nn import functional as F
+
+from config import Qwen3VLMoeVisionConfig
+from Qwen3VLMoeVisionPatchEmbed import Qwen3VLMoeVisionPatchEmbed
+from Qwen3VLMoeVisionRotaryEmbedding import Qwen3VLMoeVisionRotaryEmbedding
+from Qwen3VLMoeVisionBlock import Qwen3VLMoeVisionBlock
+from Qwen3VLMoeVisionPatchMerger import Qwen3VLMoeVisionPatchMerger
+from utils import create_tensor
+
+
+class Qwen3VLMoeVisionModel(nn.Module):
     config: Qwen3VLMoeVisionConfig
     _no_split_modules = ["Qwen3VLMoeVisionBlock"]
 
     def __init__(self, config, *inputs, **kwargs) -> None:
-        super().__init__(config, *inputs, **kwargs)
+        # super().__init__(config, *inputs, **kwargs)
+        super().__init__()
+        self.config = config
         self.spatial_merge_size = config.spatial_merge_size
         self.patch_size = config.patch_size
         self.spatial_merge_unit = self.spatial_merge_size * self.spatial_merge_size
@@ -182,3 +196,53 @@ class Qwen3VLMoeVisionModel(Qwen3VLMoePreTrainedModel):
         hidden_states = self.merger(hidden_states)
 
         return hidden_states, deepstack_feature_lists
+
+
+def test_qwen3_vl_moe_vision_model():
+    config = Qwen3VLMoeVisionConfig()
+    model = Qwen3VLMoeVisionModel(config=config, input=tuple()).to(device="cuda", dtype=torch.bfloat16)
+    model.eval()
+    # hidden_states shape: torch.Size([11008, 1536]), grid_thw: tensor([[  1,  86, 128]], device='cuda:0')
+    hidden_states = create_tensor((11008, 1536), ndim=2, device="cuda", dtype=torch.bfloat16)
+    grid_thw = torch.tensor([1, 86, 128], device="cuda").unsqueeze(0)
+    with torch.no_grad():
+        hidden_states, deepstack_feature_lists = model(hidden_states=hidden_states, grid_thw=grid_thw)
+    print(f"output hidden_states shape: {hidden_states.shape}")
+    print(f"deepstack_feature_lists lengths: {len(deepstack_feature_lists)}")
+    print(f"deepstack_feature_lists: {deepstack_feature_lists}")
+    for i, deepstack_feature in enumerate(deepstack_feature_lists):
+        print(f"deepstack_feature {i} shape: {deepstack_feature.shape}")
+
+
+if __name__ == "__main__":
+    test_qwen3_vl_moe_vision_model()
+
+"""
+output hidden_states shape: torch.Size([2752, 2048])
+deepstack_feature_lists lengths: 3
+deepstack_feature_lists: [tensor([[ 0.2480,  0.1602,  0.0801,  ...,  0.1709, -0.3945,  0.0723],
+        [ 0.1445,  0.5117, -0.3047,  ..., -0.3379, -0.2471,  0.1572],
+        [-0.0364,  0.1787, -0.1865,  ..., -0.2441,  0.0219,  0.1846],
+        ...,
+        [-0.0649,  0.0693, -0.0664,  ..., -0.1011, -0.1128, -0.3496],
+        [ 0.0310, -0.1562, -0.1572,  ..., -0.1045,  0.3164,  0.0354],
+        [-0.1191, -0.1465, -0.1230,  ...,  0.2910, -0.0684,  0.4277]],
+       device='cuda:0', dtype=torch.bfloat16), tensor([[-0.3184,  0.1328, -0.0566,  ..., -0.2383,  0.1631, -0.0771],
+        [-0.2930,  0.1182,  0.2168,  ..., -0.0586,  0.0115, -0.1182],
+        [-0.2480, -0.0649,  0.2715,  ..., -0.2314, -0.0264, -0.0366],
+        ...,
+        [-0.1748, -0.0933, -0.0564,  ...,  0.1348, -0.2178,  0.2100],
+        [-0.6211,  0.1426, -0.0479,  ...,  0.3047,  0.0420,  0.1641],
+        [-0.1133,  0.0649,  0.0122,  ...,  0.1816,  0.0693,  0.1118]],
+       device='cuda:0', dtype=torch.bfloat16), tensor([[ 0.1260,  0.0825, -0.0977,  ...,  0.0046,  0.0762, -0.0767],
+        [-0.2637,  0.0300,  0.2480,  ..., -0.1050,  0.1348,  0.3320],
+        [-0.1582, -0.0972,  0.3281,  ..., -0.2373, -0.1484,  0.3164],
+        ...,
+        [ 0.1992,  0.1807, -0.0737,  ..., -0.1377,  0.0762,  0.4219],
+        [-0.0305, -0.0654,  0.0131,  ..., -0.0454,  0.1040,  0.2490],
+        [-0.2207,  0.0918,  0.0479,  ..., -0.0265,  0.1660, -0.1367]],
+       device='cuda:0', dtype=torch.bfloat16)]
+deepstack_feature 0 shape: torch.Size([2752, 2048])
+deepstack_feature 1 shape: torch.Size([2752, 2048])
+deepstack_feature 2 shape: torch.Size([2752, 2048])
+"""

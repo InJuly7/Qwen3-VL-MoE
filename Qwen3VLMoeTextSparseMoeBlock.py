@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
-from config import Qwen3_VL_MOE_Text_Config
+from config import Qwen3VLMoeTextConfig
 from utils import create_tensor
-from utils import SiLUActivation
 from Qwen3VLMoeTextExperts import Qwen3VLMoeTextExperts
 
 
@@ -31,14 +30,12 @@ class Qwen3VLMoeTextSparseMoeBlock(nn.Module):
         routing_weights = routing_weights.to(hidden_states.dtype)
         router_weights = torch.zeros_like(router_logits).scatter_(1, router_indices, routing_weights)  # (B*S, num_experts)
         hidden_states = hidden_states.reshape(batch_size, -1, self.hidden_size)  # (B,S,H)
-        routed_out = self.experts(hidden_states, router_weights, router_indices)
+        routed_out = self.experts(hidden_states, router_weights, router_indices)  # (B,S,H)
         return routed_out, router_logits
 
 
-# Qwen3VLMoeTextSparseMoeBlock forward
-# hidden_states.shape: torch.Size([1, 2768, 2048])
 def test_qwen3_vl_moe_text_sparse_moe_block():
-    config = Qwen3_VL_MOE_Text_Config
+    config = Qwen3VLMoeTextConfig()
     model = Qwen3VLMoeTextSparseMoeBlock(config).to(device="cuda", dtype=torch.bfloat16)
     hidden_states = create_tensor((1, 2768, 2048), dtype=torch.bfloat16, ndim=3, device="cuda")
     print("hidden_states.shape:", hidden_states.shape)
@@ -49,3 +46,10 @@ def test_qwen3_vl_moe_text_sparse_moe_block():
 
 if __name__ == "__main__":
     test_qwen3_vl_moe_text_sparse_moe_block()
+
+"""
+Output Log:
+hidden_states.shape: torch.Size([1, 2768, 2048])
+routed_out.shape: torch.Size([1, 2768, 2048])
+router_logits.shape: torch.Size([2768, 128])
+"""

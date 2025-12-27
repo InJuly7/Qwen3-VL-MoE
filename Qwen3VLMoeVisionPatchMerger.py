@@ -1,3 +1,9 @@
+import torch
+from torch import nn
+from config import Qwen3VLMoeVisionConfig
+from utils import create_tensor
+
+
 class Qwen3VLMoeVisionPatchMerger(nn.Module):
     def __init__(self, config: Qwen3VLMoeVisionConfig, use_postshuffle_norm=False) -> None:
         super().__init__()
@@ -12,3 +18,17 @@ class Qwen3VLMoeVisionPatchMerger(nn.Module):
         x = self.norm(x.view(-1, self.hidden_size) if self.use_postshuffle_norm else x).view(-1, self.hidden_size)
         x = self.linear_fc2(self.act_fn(self.linear_fc1(x)))
         return x
+
+
+def test_qwen3_vl_moe_vision_patch_merger():
+    config = Qwen3VLMoeVisionConfig()
+    model = Qwen3VLMoeVisionPatchMerger(config).to(device="cuda", dtype=torch.bfloat16)
+    model.eval()
+    x = create_tensor((11008, 1152), ndim=2, device="cuda", dtype=torch.bfloat16)
+    with torch.no_grad():
+        x = model(x)
+    print(f"x.shape: {x.shape}")  # [2752, 2048]
+
+
+if __name__ == "__main__":
+    test_qwen3_vl_moe_vision_patch_merger()

@@ -1,8 +1,11 @@
 import torch
-import torch.nn as nn
+from torch import Tensor, nn
+import math
+
 from typing import Optional, List, Union
 from dataclasses import dataclass
 import os
+import functools
 
 
 class DynamicCache:
@@ -34,6 +37,16 @@ class DynamicCache:
 class SiLUActivation(nn.Module):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return nn.functional.silu(input)
+
+
+class GELUTanh(nn.Module):
+    def __init__(self, use_gelu_tanh_python: bool = False):
+        super().__init__()
+        # gelu_pytorch_tanh
+        self.act = functools.partial(nn.functional.gelu, approximate="tanh")
+
+    def forward(self, input: Tensor) -> Tensor:
+        return self.act(input)
 
 
 def _make_causal_mask(input_ids_shape: torch.Size, dtype: torch.dtype, device: torch.device, past_key_values_length: int = 0):
@@ -90,21 +103,39 @@ def _prepare_decoder_attention_mask(
     return combined_attention_mask
 
 
+def build_position_ids(seq_len=2768, text_len=128, grid_h=55, grid_w=48, device="cuda"):
+    """
+    返回 position_ids: [3, 1, L]
+    约定：
+      - 轴0: 全局序列位置(类似 1D position)
+      - 轴1: 高度 h(视觉段为网格行号;文本段用全局位置占位)
+      - 轴2: 宽度 w(视觉段为网格列号;文本段用全局位置占位)
+    """
+    assert text_len <= seq_len
+    vision_len = seq_len - text_len
+    assert grid_h * grid_w == vision_len, f"grid_h*grid_w 必须等于 vision_len={vision_len}"
+
+    # axis 0：全局递增位置（让 KV cache / rope 连续更常见）
+    pos0 = torch.arange(seq_len, dtype=torch.long, device=device)  # [L]
+
+    # 文本段：为了简单，轴1/2也用全局位置（你也可以改成全 0）
+    text_pos = torch.arange(text_len, dtype=torch.long, device=device)  # [T]
+    pos1_text = text_pos.clone()
+    pos2_text = text_pos.clone()
+
+    # 视觉段：构造 h/w 网格坐标
+    # h: 0..H-1，每个重复 W 次；w: 0..W-1，重复 H 次
+    h = torch.arange(grid_h, dtype=torch.long, device=device).repeat_interleave(grid_w)  # [V]
+    w = torch.arange(grid_w, dtype=torch.long, device=device).repeat(grid_h)  # [V]
+
+    pos1 = torch.cat([pos1_text, h], dim=0)  # [L]
+    pos2 = torch.cat([pos2_text, w], dim=0)  # [L]
+
+    position_ids = torch.stack([pos0, pos1, pos2], dim=0).unsqueeze(1)  # [3, 1, L]
+    return position_ids
+
+
 # class Qwen3VLMoeCausalLMOutputWithPast(ModelOutput):
-#     r"""
-#     loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
-#         Language modeling loss (for next-token prediction).
-#     logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.vocab_size)`):
-#         Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).
-#     past_key_values (`Cache`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):
-#         It is a [`~cache_utils.Cache`] instance. For more details, see our [kv cache guide](https://huggingface.co/docs/transformers/en/kv_cache).
-
-#         Contains pre-computed hidden-states (key and values in the self-attention blocks) that can be used (see
-#         `past_key_values` input) to speed up sequential decoding.
-#     rope_deltas (`torch.LongTensor` of shape `(batch_size, )`, *optional*):
-#         The rope index difference between sequence length and multimodal rope.
-#     """
-
 #     loss: Optional[torch.FloatTensor] = None
 #     logits: Optional[torch.FloatTensor] = None
 #     past_key_values: Optional[Cache] = None
@@ -121,16 +152,6 @@ def _prepare_decoder_attention_mask(
 #     """
 # )
 # class Qwen3VLMoeModelOutputWithPast(ModelOutput):
-#     r"""
-#     past_key_values (`Cache`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):
-#         It is a [`~cache_utils.Cache`] instance. For more details, see our [kv cache guide](https://huggingface.co/docs/transformers/en/kv_cache).
-
-#         Contains pre-computed hidden-states (key and values in the self-attention blocks) that can be used (see
-#         `past_key_values` input) to speed up sequential decoding.
-#     rope_deltas (`torch.LongTensor` of shape `(batch_size, )`, *optional*):
-#         The rope index difference between sequence length and multimodal rope.
-#     """
-
 #     last_hidden_state: Optional[torch.FloatTensor] = None
 #     past_key_values: Optional[Cache] = None
 #     hidden_states: Optional[tuple[torch.FloatTensor]] = None
@@ -211,7 +232,7 @@ def create_tensor(shape, dtype=torch.float32, ndim=2, device="cpu"):
 
 
 # ∣A − B∣ ≤ atol + (rtol × ∣B∣)
-def compare_tensor(A: torch.Tensor, B: torch.Tensor, dtype: torch.dtype, rtol: float, atol: float) -> bool:
+def compare_tensor(A: torch.Tensor, B: torch.Tensor, dtype: torch.dtype, rtol: float = 1e-3, atol: float = 1e-3) -> bool:
 
     # 检查形状
     if A.shape != B.shape:
@@ -225,9 +246,12 @@ def compare_tensor(A: torch.Tensor, B: torch.Tensor, dtype: torch.dtype, rtol: f
         is_close = torch.isclose(A, B, rtol=rtol, atol=atol)
     elif A.dtype == torch.bfloat16:
         is_close = torch.isclose(A, B, rtol=rtol, atol=atol)
+    elif A.dtype == torch.long:
+        is_close = A == B
 
     # 如果全部都 Close，则通过
     if torch.all(is_close):
+        print("Tensor values are close enough.")
         return True
 
     # 定位错误

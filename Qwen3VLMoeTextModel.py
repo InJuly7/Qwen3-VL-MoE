@@ -1,9 +1,22 @@
-class Qwen3VLMoeTextModel(Qwen3VLMoePreTrainedModel):
+import torch
+import torch.nn as nn
+from typing import Optional, Union
+
+from Qwen3VLMoeTextDecoderLayer import Qwen3VLMoeTextDecoderLayer
+from Qwen3VLMoeTextRMSNorm import Qwen3VLMoeTextRMSNorm
+from Qwen3VLMoeTextRotaryEmbedding import Qwen3VLMoeTextRotaryEmbedding
+from config import Qwen3VLMoeTextConfig
+from utils import create_tensor
+from utils import DynamicCache, BaseModelOutputWithPast
+
+
+class Qwen3VLMoeTextModel(nn.Module):
     config: Qwen3VLMoeTextConfig
     _no_split_modules = ["Qwen3VLMoeTextDecoderLayer"]
 
     def __init__(self, config: Qwen3VLMoeTextConfig):
-        super().__init__(config)
+        # super().__init__(config)
+        super().__init__()
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
 
@@ -14,23 +27,25 @@ class Qwen3VLMoeTextModel(Qwen3VLMoePreTrainedModel):
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
-        self.post_init()
+        # self.post_init()
 
-    @check_model_inputs()
-    @auto_docstring
+    # @check_model_inputs()
+    # @auto_docstring
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
-        past_key_values: Optional[Cache] = None,
+        # past_key_values: Optional[Cache] = None,
+        past_key_values: Optional[DynamicCache] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         use_cache: Optional[bool] = None,
         cache_position: Optional[torch.LongTensor] = None,
         # args for deepstack
         visual_pos_masks: Optional[torch.Tensor] = None,
         deepstack_visual_embeds: Optional[list[torch.Tensor]] = None,
-        **kwargs: Unpack[FlashAttentionKwargs],
+        # **kwargs: Unpack[FlashAttentionKwargs],
+        **kwargs,
     ) -> Union[tuple, BaseModelOutputWithPast]:
         r"""
         visual_pos_masks (`torch.Tensor` of shape `(batch_size, seqlen)`, *optional*):
@@ -44,36 +59,37 @@ class Qwen3VLMoeTextModel(Qwen3VLMoePreTrainedModel):
             raise ValueError("You must specify exactly one of input_ids or inputs_embeds")
 
         # torch.jit.trace() doesn't support cache objects in the output
-        if use_cache and past_key_values is None and not torch.jit.is_tracing():
-            past_key_values = DynamicCache(config=self.config)
+        # if use_cache and past_key_values is None and not torch.jit.is_tracing():
+        #     past_key_values = DynamicCache(config=self.config)
 
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
 
-        if cache_position is None:
-            past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
-            cache_position = torch.arange(past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device)
+        # if cache_position is None:
+        #     past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
+        #     cache_position = torch.arange(past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device)
 
         # the hard coded `3` is for temporal, height and width.
-        if position_ids is None:
-            position_ids = cache_position.view(1, 1, -1).expand(3, inputs_embeds.shape[0], -1)
-        elif position_ids.ndim == 2:
-            position_ids = position_ids[None, ...].expand(3, position_ids.shape[0], -1)
+        # if position_ids is None:
+        #     position_ids = cache_position.view(1, 1, -1).expand(3, inputs_embeds.shape[0], -1)
+        # elif position_ids.ndim == 2:
+        #     position_ids = position_ids[None, ...].expand(3, position_ids.shape[0], -1)
 
-        if position_ids.ndim == 3 and position_ids.shape[0] == 4:
-            text_position_ids = position_ids[0]
-            position_ids = position_ids[1:]
-        else:
-            text_position_ids = position_ids[0]
+        # if position_ids.ndim == 3 and position_ids.shape[0] == 4:
+        #     text_position_ids = position_ids[0]
+        #     position_ids = position_ids[1:]
+        # else:
+        #     text_position_ids = position_ids[0]
+        text_position_ids = position_ids[0]
 
-        attention_mask = create_causal_mask(
-            config=self.config,
-            input_embeds=inputs_embeds,
-            attention_mask=attention_mask,
-            cache_position=cache_position,
-            past_key_values=past_key_values,
-            position_ids=text_position_ids,
-        )
+        # attention_mask = create_causal_mask(
+        #     config=self.config,
+        #     input_embeds=inputs_embeds,
+        #     attention_mask=attention_mask,
+        #     cache_position=cache_position,
+        #     past_key_values=past_key_values,
+        #     position_ids=text_position_ids,
+        # )
 
         hidden_states = inputs_embeds
 
@@ -114,3 +130,52 @@ class Qwen3VLMoeTextModel(Qwen3VLMoePreTrainedModel):
         local_this = hidden_states[visual_pos_masks, :].clone() + visual_embeds
         hidden_states[visual_pos_masks, :] = local_this
         return hidden_states
+
+
+def test_qwen3_vl_moe_text_model():
+    # inputs_embeds shape: torch.Size([1, 2768, 2048]), dtype: torch.bfloat16
+    # attention_mask shape: torch.Size([1, 2768]), dtype: torch.int64
+    # position_ids shape: torch.Size([3, 1, 2768]), dtype: torch.int64
+    # cache_position shape: torch.Size([2768]), dtype: torch.int64
+    # visual_pos_masks shape: torch.Size([1, 2768]), dtype: torch.bool
+    # deepstack_visual_embeds[0] shape: torch.Size([2752, 2048]), dtype: torch.bfloat16
+    # deepstack_visual_embeds[1] shape: torch.Size([2752, 2048]), dtype: torch.bfloat16
+    # deepstack_visual_embeds[2] shape: torch.Size([2752, 2048]), dtype: torch.bfloat16
+    config = Qwen3VLMoeTextConfig()
+    model = Qwen3VLMoeTextModel(config).to(device="cuda", dtype = torch.bfloat16)
+    model.eval()
+    B, S, D = 1, 2768, 2048
+    V = 2752
+    visual_pos_masks = torch.zeros((B, S), device="cuda", dtype=torch.bool)
+    visual_pos_masks[:, :V] = True
+    inputs_embeds = create_tensor((B, S, D), ndim = 3, device="cuda", dtype=torch.bfloat16)
+    attention_mask = create_tensor((1, 1, 1, 2768), ndim = 4, device="cuda", dtype=torch.int64)
+    position_ids = create_tensor((3, 1, 2768), ndim = 3, device="cuda", dtype=torch.int64)
+    cache_position = create_tensor((2768,), ndim = 1, device="cuda", dtype=torch.int64)
+    
+    deepstack_visual_embeds = [
+        create_tensor((2752, 2048), ndim = 2, device="cuda", dtype=torch.bfloat16),
+        create_tensor((2752, 2048), ndim = 2, device="cuda", dtype=torch.bfloat16),
+        create_tensor((2752, 2048), ndim = 2, device="cuda", dtype=torch.bfloat16),
+    ]
+    past_key_values = DynamicCache()
+    outputs = BaseModelOutputWithPast()
+    with torch.no_grad():
+        outputs = model(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            cache_position=cache_position,
+            visual_pos_masks=visual_pos_masks,
+            deepstack_visual_embeds=deepstack_visual_embeds,
+            past_key_values = past_key_values,
+            use_cache=True,
+        )
+    print(f"outputs.last_hidden_state shape: {outputs.last_hidden_state.shape}, dtype: {outputs.last_hidden_state.dtype}")
+    print(f"outputs.past_key_values length : {outputs.past_key_values.get_seq_length()}")
+
+
+
+
+if __name__ == "__main__":
+    test_qwen3_vl_moe_text_model()

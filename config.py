@@ -3,13 +3,14 @@ from typing import Optional, Tuple, List, Dict
 
 
 @dataclass
-class Qwen3_VL_MOE_Text_Config:
+class Qwen3VLMoeTextConfig:
     """Text configuration for Qwen3 VL MOE model"""
 
     model_type: str = "qwen3_vl_moe_text"
     attention_bias: bool = False
     attention_dropout: float = 0.0
     bos_token_id: int = 151643
+    pad_token_id: int = 151643
     eos_token_id: int = 151645
     decoder_sparse_step: int = 1
     dtype: str = "bfloat16"
@@ -36,7 +37,7 @@ class Qwen3_VL_MOE_Text_Config:
 
 
 @dataclass
-class Qwen3_VL_MOE_Vision_Config:
+class Qwen3VLMoeVisionConfig:
     """Vision configuration for Qwen3 VL MOE model"""
 
     model_type: str = "qwen3_vl_moe"
@@ -56,15 +57,15 @@ class Qwen3_VL_MOE_Vision_Config:
 
 
 @dataclass
-class Qwen3_VL_MOE_Config:
+class Qwen3VLMoeConfig:
     """Main configuration for Qwen3 VL MOE model"""
 
     architectures: str = "Qwen3VLMoeForConditionalGeneration"
     dtype: str = "bfloat16"
     image_token_id: int = 151655
     model_type: str = "qwen3_vl_moe"
-    text_config: Qwen3_VL_MOE_Text_Config = field(default_factory=Qwen3_VL_MOE_Text_Config)
-    vision_config: Qwen3_VL_MOE_Vision_Config = field(default_factory=Qwen3_VL_MOE_Vision_Config)
+    text_config: Qwen3VLMoeTextConfig = field(default_factory=Qwen3VLMoeTextConfig)
+    vision_config: Qwen3VLMoeVisionConfig = field(default_factory=Qwen3VLMoeVisionConfig)
     tie_word_embeddings: bool = False
     transformers_version: str = "4.57.3"
     video_token_id: int = 151656

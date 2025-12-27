@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from config import Qwen3_VL_MOE_Config
+from config import Qwen3VLMoeTextConfig
 from utils import create_tensor
 from utils import SiLUActivation
 
@@ -22,7 +22,7 @@ class Qwen3VLMoeTextMLP(nn.Module):
 
 
 def test_qwen3_vl_moe_text_mlp():
-    config = Qwen3_VL_MOE_Config().text_config
+    config = Qwen3VLMoeTextConfig()
     model = Qwen3VLMoeTextMLP(config).to(device="cuda", dtype=torch.bfloat16)
     input_tensor = create_tensor((2, 4, config.hidden_size), dtype=torch.bfloat16, ndim=3, device="cuda")
     print("input shape:", input_tensor.shape)
@@ -33,3 +33,9 @@ def test_qwen3_vl_moe_text_mlp():
 
 if __name__ == "__main__":
     test_qwen3_vl_moe_text_mlp()
+
+"""
+Output Log:
+input shape: torch.Size([2, 4, 2048])
+output shape: torch.Size([2, 4, 2048])
+"""
